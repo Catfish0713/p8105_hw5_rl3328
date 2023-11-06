@@ -97,9 +97,9 @@ longitudinal = function(path,filename) {
   df = 
     read_csv(path) |>
     janitor::clean_names() |>
-    mutate(id = filename)
+    mutate(id = filename) |>
     pivot_longer(
-      -id,
+      cols = -id,
       names_to = "week",
       values_to = "value",
       names_prefix = "week_") |>
@@ -109,38 +109,43 @@ longitudinal = function(path,filename) {
         arm,
         con = "control",
         exp = "experimental"),
-  subject_id = gsub("\\.csv\\","",subject_id))
+      subject_id = gsub("\\.csv$","",subject_id))
 
   df
   
 }
-filelst = list.files("./data")
+
+filelst = list.files("./data",full.names = TRUE)
+
 q3_tidy = 
-  map(1:20, longitudinal, path = paste("./data/", filelst, sep = ""), id = filelst) |> 
+  purrr::map(filelst, ~ longitudinal(.x, basename(.x))) |> 
   bind_rows()
 
-q3_tidy =
-  bind_rows(
-    longitudinal("./data/con_01.csv","con_01"),
-    longitudinal("./data/con_02.csv","con_02"),
-    longitudinal("./data/con_03.csv","con_03"),
-    longitudinal("./data/con_04.csv","con_04"),
-    longitudinal("./data/con_05.csv","con_05"),
-    longitudinal("./data/con_06.csv","con_06"),
-    longitudinal("./data/con_07.csv","con_07"),
-    longitudinal("./data/con_08.csv","con_08"),
-    longitudinal("./data/con_09.csv","con_09"),
-    longitudinal("./data/con_10.csv","con_10"),
-    longitudinal("./data/exp_01.csv","exp_01"),
-    longitudinal("./data/exp_02.csv","exp_02"),
-    longitudinal("./data/exp_03.csv","exp_03"),
-    longitudinal("./data/exp_04.csv","exp_04"),
-    longitudinal("./data/exp_05.csv","exp_05"),
-    longitudinal("./data/exp_06.csv","exp_06"),
-    longitudinal("./data/exp_07.csv","exp_07"),
-    longitudinal("./data/exp_08.csv","exp_08"),
-    longitudinal("./data/exp_09.csv","exp_09"),
-    longitudinal("./data/exp_10.csv","exp_10"))
-    
+q3_tidy |>
+  group_by(week) |> 
+  summarise(n = n())
+ 
+q3_tidy |>
+  group_by(subject_id) |> 
+  summarise(n = n())   
+
+q3_tidy |>
+  group_by(week, subject_id) |> 
+  summarise(n = n())
 ```
+
+
+## make a spaghetti plot
+Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups
+
+```{r}
+q3_tidy |>
+  ggplot(aes(x = week, y = value, color = subject_id)) +
+  geom_line(aes(group = subject_id),se = FALSE)+
+  facet_grid(~arm)
+```
+
+Participants in control arm didn't show significant change in value over the 8 weeks of study, whereas participants in experimental arm saw a considerable increase in value over the 8 weeks.
+
+
 
