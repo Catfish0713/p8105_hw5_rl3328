@@ -1,0 +1,86 @@
+---
+title: "p8105_hw5_rl3328"
+author: "Ruixi Li"
+date: "2023-11-03"
+output: html_document
+---
+
+```{r setup, message=FALSE}
+library(tidyverse)
+library(readr)
+```
+
+# Problem 1
+
+## import, clean and describe data
+
+* I created the variable `city_state`.
+
+```{r}
+homicide = read_csv("homicide-data.csv") |>
+  janitor::clean_names() |>
+  dplyr::mutate(
+    city_state = paste(city,",",state),
+    city_state = str_replace(city_state,"Tulsa , AL", "Tulsa , OK")) 
+
+```
+
+
+the raw data have `r nrow(homicide)` records and`r ncol(homicide)` variables. Column names are `r colnames(homicide)`.The data included the location of the killing, whether an arrest was made and, in most cases, basic demographic information about each victim.
+
+## summerize and get the proportion
+
+* I summarized within cities to obtain the total number of homicides and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”).
+
+* For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
+
+```{r}
+p = homicide |>
+  group_by(city_state) |># there's no missing in city or state variables
+  summarise(total_count = n(),
+            unsolved_count = sum(disposition %in% c("Closed without arrest","Open/No arrest"))) |>
+  filter(city_state == "Baltimore , MD") 
+
+prop.test(pull(p,unsolved_count), pull(p,total_count),conf.level = .95) |>
+  broom::tidy() |>
+  select(estimate,conf.low, conf.high)
+```
+
+
+Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
+
+I had a function calculating prop and its 95%CI.
+```{r}
+prop = function(df){
+  
+  pp = prop.test(pull(df,unsolved_count), pull(df,total_count),conf.level = .95) |>
+    broom::tidy() |>
+    select(estimate,conf.low, conf.high)
+}
+
+prop(p)#check if the function works
+
+data_city = homicide |>
+  group_by(city_state) |># there's no missing in city or state variables
+  summarise(total_count = n(),
+            unsolved_count = sum(disposition %in% c("Closed without arrest","Open/No arrest"))) 
+
+result <- data_city |>
+  group_by(city_state) |>
+  nest() |>
+  mutate(proportion_test = map(data, prop)) |>
+  select(proportion_test) |>
+  unnest(proportion_test)
+
+#do I need to combine the two locations in Tulsa
+```
+
+Create a plot that shows the estimates and CIs for each city – check out geom_errorbar for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides.
+
+```{r}
+result |>
+  mutate(city_state = fct_reorder(city_state,estimate)) |>
+  ggplot(aes(x = city_state, y = estimate, color = city_state)) +
+  geom_pointrange(aes(ymin = conf.low, ymax = conf.high))
+```
+
