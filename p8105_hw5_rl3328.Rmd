@@ -46,6 +46,7 @@ prop.test(pull(p,unsolved_count), pull(p,total_count),conf.level = .95) |>
   select(estimate,conf.low, conf.high)
 ```
 
+## get the proportions for all locations
 
 Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
 
@@ -75,6 +76,8 @@ result <- data_city |>
 #do I need to combine the two locations in Tulsa
 ```
 
+## visualization
+
 Create a plot that shows the estimates and CIs for each city – check out geom_errorbar for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides.
 
 ```{r}
@@ -82,5 +85,62 @@ result |>
   mutate(city_state = fct_reorder(city_state,estimate)) |>
   ggplot(aes(x = city_state, y = estimate, color = city_state)) +
   geom_pointrange(aes(ymin = conf.low, ymax = conf.high))
+```
+
+# Problem 2
+
+## import and clean data
+
+```{r}
+longitudinal = function(path,filename) {
+  
+  df = 
+    read_csv(path) |>
+    janitor::clean_names() |>
+    mutate(id = filename)
+    pivot_longer(
+      -id,
+      names_to = "week",
+      values_to = "value",
+      names_prefix = "week_") |>
+    separate(id,c("arm","subject_id"),sep="_") |>
+    mutate(
+      arm = recode(
+        arm,
+        con = "control",
+        exp = "experimental"),
+  subject_id = gsub("\\.csv\\","",subject_id))
+
+  df
+  
+}
+filelst = list.files("./data")
+q3_tidy = 
+  map(1:20, longitudinal, path = paste("./data/", filelst, sep = ""), id = filelst) |> 
+  bind_rows()
+
+q3_tidy =
+  bind_rows(
+    longitudinal("./data/con_01.csv","con_01"),
+    longitudinal("./data/con_02.csv","con_02"),
+    longitudinal("./data/con_03.csv","con_03"),
+    longitudinal("./data/con_04.csv","con_04"),
+    longitudinal("./data/con_05.csv","con_05"),
+    longitudinal("./data/con_06.csv","con_06"),
+    longitudinal("./data/con_07.csv","con_07"),
+    longitudinal("./data/con_08.csv","con_08"),
+    longitudinal("./data/con_09.csv","con_09"),
+    longitudinal("./data/con_10.csv","con_10"),
+    longitudinal("./data/exp_01.csv","exp_01"),
+    longitudinal("./data/exp_02.csv","exp_02"),
+    longitudinal("./data/exp_03.csv","exp_03"),
+    longitudinal("./data/exp_04.csv","exp_04"),
+    longitudinal("./data/exp_05.csv","exp_05"),
+    longitudinal("./data/exp_06.csv","exp_06"),
+    longitudinal("./data/exp_07.csv","exp_07"),
+    longitudinal("./data/exp_08.csv","exp_08"),
+    longitudinal("./data/exp_09.csv","exp_09"),
+    longitudinal("./data/exp_10.csv","exp_10"))
+    
 ```
 
