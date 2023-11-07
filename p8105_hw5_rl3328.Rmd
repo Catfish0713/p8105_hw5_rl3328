@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, message=FALSE}
 library(tidyverse)
 library(readr)
+library(purrr)
 ```
 
 # Problem 1
@@ -147,5 +148,34 @@ q3_tidy |>
 
 Participants in control arm didn't show significant change in value over the 8 weeks of study, whereas participants in experimental arm saw a considerable increase in value over the 8 weeks.
 
+# Problem 3
 
+```{r}
+set.seed(1)
+
+p3 = function(mu,n = 30,sigma = 5){#mu must be in the first place?
+
+  sim_data = tibble(
+     x = rnorm(n, mean = mu, sd = sigma),
+  )
+    sim_data |>
+    t.test() |> broom::tidy() |>
+    select(estimate, p.value) |>
+    janitor::clean_names()
+}
+
+results_df =   
+  map(1:5000, \(i) p3(mu = 0)) |> bind_rows()
+
+```
+
+```{r}
+sim_results_df = 
+  expand_grid(
+    mu = 1:6,
+    iter = 1:5000) |> 
+  mutate(
+    estimate_df = map(mu,p3)) |> 
+  unnest(estimate_df)
+```
 
