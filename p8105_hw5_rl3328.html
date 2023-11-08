@@ -358,7 +358,8 @@ display: none;
 
 
 <pre class="r"><code>library(tidyverse)
-library(readr)</code></pre>
+library(readr)
+library(purrr)</code></pre>
 <div id="problem-1" class="section level1">
 <h1>Problem 1</h1>
 <div id="import-clean-and-describe-data" class="section level2">
@@ -693,6 +694,31 @@ and comment on differences between groups</p>
 over the 8 weeks of study, whereas participants in experimental arm saw
 a considerable increase in value over the 8 weeks.</p>
 </div>
+</div>
+<div id="problem-3" class="section level1">
+<h1>Problem 3</h1>
+<pre class="r"><code>set.seed(1)
+
+p3 = function(mu,n = 30,sigma = 5){#mu must be in the first place?
+
+  sim_data = tibble(
+     x = rnorm(n, mean = mu, sd = sigma),
+  )
+    sim_data |&gt;
+    t.test() |&gt; broom::tidy() |&gt;
+    select(estimate, p.value) |&gt;
+    janitor::clean_names()
+}
+
+results_df =   
+  map(1:5000, \(i) p3(mu = 0)) |&gt; bind_rows()</code></pre>
+<pre class="r"><code>sim_results_df = 
+  expand_grid(
+    mu = 1:6,
+    iter = 1:5000) |&gt; 
+  mutate(
+    estimate_df = map(mu,p3)) |&gt; 
+  unnest(estimate_df)</code></pre>
 </div>
 
 

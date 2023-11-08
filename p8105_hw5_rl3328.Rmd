@@ -9,6 +9,7 @@ output: html_document
 library(tidyverse)
 library(readr)
 library(purrr)
+library(plotly)
 ```
 
 # Problem 1
@@ -150,6 +151,7 @@ Participants in control arm didn't show significant change in value over the 8 w
 
 # Problem 3
 
+## mu = 0
 ```{r}
 set.seed(1)
 
@@ -169,6 +171,7 @@ results_df =
 
 ```
 
+## mu =1:6
 ```{r}
 sim_results_df = 
   expand_grid(
@@ -177,5 +180,60 @@ sim_results_df =
   mutate(
     estimate_df = map(mu,p3)) |> 
   unnest(estimate_df)
+```
+
+## visualization
+
+Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of μ on the x axis. Describe the association between effect size and power.
+
+```{r}
+plot_df = sim_results_df |>
+  mutate(
+    conclusion = ifelse(p_value < 0.05, "reject","not reject")) |>
+  group_by(mu) |>
+  summarise(total_count = n(),
+            reject = sum(conclusion == "reject")) |>
+  mutate(prop = reject/total_count) 
+
+power = plot_df |>
+  plot_ly(x = ~mu, y = ~prop, type = 'scatter', mode = "line") |>
+  layout(title = 'Association between effect size and power', plot_bgcolor = "#e5ecf6",
+         xaxis = list(title = "True mu",
+                     tickvals = seq(1, 6, by = 1),
+                     ticktext = seq(1, 6, by = 1)),
+         yaxis = list(title = "Power")) 
+power
+```
+* the power increases as the effect size increases. For a study with a sample size of 30, an effect size=5 has been larger enough to bring the power of t test up to 1.
+
+
+
+Make a plot showing the average estimate of μ^ on the y axis and the true value of μ on the x axis.
+
+```{r}
+estimate_all = sim_results_df |>
+  plot_ly(x = ~mu, y = ~estimate, type = 'box', name = "all") |>
+  layout(title = 'Association between true mu and its estimate', plot_bgcolor = "#e5ecf6",
+         xaxis = list(title = "True mu",
+                     tickvals = seq(1, 6, by = 1),
+                     ticktext = seq(1, 6, by = 1)),
+         yaxis = list(title = "Estimate")) 
+estimate_all
+
+```
+
+Make a second plot (or overlay on the first) the average estimate of μ^ only in samples for which the null was rejected on the y axis and the true value of μ on the x axis. Is the sample average of μ^ across tests for which the null is rejected approximately equal to the true value of μ
+? Why or why not?
+
+
+```{r}
+estimate_rej = sim_results_df |>
+  filter(p_value<0.05)
+ 
+
+compare = add_trace(estimate_all, x = ~pull(estimate_rej,mu), y = ~pull(estimate_rej,estimate), type = 'box', name = "reject") |> layout(legend=list(title=list(text='Data Range')))
+
+compare
+  
 ```
 
