@@ -23,7 +23,7 @@ homicide = read_csv("homicide-data.csv") |>
   janitor::clean_names() |>
   dplyr::mutate(
     city_state = paste(city,",",state),
-    city_state = str_replace(city_state,"Tulsa , AL", "Tulsa , OK")) 
+    city_state = str_replace(city_state,"Tulsa , AL", "Tulsa , OK")) #correct the misclassification of state for Tulsa
 
 ```
 
@@ -198,7 +198,7 @@ plot_df = sim_results_df |>
 power = plot_df |>
   plot_ly(x = ~mu, y = ~prop, type = 'scatter', mode = "line") |>
   layout(title = 'Association between effect size and power', plot_bgcolor = "#e5ecf6",
-         xaxis = list(title = "True mu",
+         xaxis = list(title = "Effect Size",
                      tickvals = seq(1, 6, by = 1),
                      ticktext = seq(1, 6, by = 1)),
          yaxis = list(title = "Power")) 
@@ -212,7 +212,9 @@ Make a plot showing the average estimate of μ^ on the y axis and the true value
 
 ```{r}
 estimate_all = sim_results_df |>
-  plot_ly(x = ~mu, y = ~estimate, type = 'box', name = "all") |>
+  group_by(mu) |>
+  summarise(avg_estimate = mean(estimate)) |>
+  plot_ly(x = ~mu, y = ~avg_estimate, type = 'scatter', mode = 'line', name = 'all') |>
   layout(title = 'Association between true mu and its estimate', plot_bgcolor = "#e5ecf6",
          xaxis = list(title = "True mu",
                      tickvals = seq(1, 6, by = 1),
@@ -222,16 +224,17 @@ estimate_all
 
 ```
 
-Make a second plot (or overlay on the first) the average estimate of μ^ only in samples for which the null was rejected on the y axis and the true value of μ on the x axis. Is the sample average of μ^ across tests for which the null is rejected approximately equal to the true value of μ
-? Why or why not?
+Make a second plot (or overlay on the first) the average estimate of μ^ only in samples for which the null was rejected on the y axis and the true value of μ on the x axis. Is the sample average of μ^ across tests for which the null is rejected approximately equal to the true value of μ? Why or why not?
 
 
 ```{r}
 estimate_rej = sim_results_df |>
-  filter(p_value<0.05)
+  filter(p_value<0.05) |>
+  group_by(mu) |>
+  summarise(avg_estimate = mean(estimate))
  
 
-compare = add_trace(estimate_all, x = ~pull(estimate_rej,mu), y = ~pull(estimate_rej,estimate), type = 'box', name = "reject") |>layout(legend=list(title=list(text='Data Range')))
+compare = add_trace(estimate_all, x = ~pull(estimate_rej,mu), y = ~pull(estimate_rej,avg_estimate), type = 'scatter',mode = 'line', name = "reject") |>layout(legend=list(title=list(text='Data Range')))
 
 compare
   
