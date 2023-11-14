@@ -161,7 +161,8 @@ p3 = function(mu,n = 30,sigma = 5){#mu must be in the first place?
      x = rnorm(n, mean = mu, sd = sigma),
   )
     sim_data |>
-    t.test() |> broom::tidy() |>
+    t.test(mu = 0, paired = FALSE, var.equal = FALSE, conf.level = 0.95) |> 
+    broom::tidy() |>
     select(estimate, p.value) |>
     janitor::clean_names()
 }
@@ -171,11 +172,11 @@ results_df =
 
 ```
 
-## mu =1:6
+## mu =0:6
 ```{r}
 sim_results_df = 
   expand_grid(
-    mu = 1:6,
+    mu = 0:6,
     iter = 1:5000) |> 
   mutate(
     estimate_df = map(mu,p3)) |> 
@@ -199,12 +200,12 @@ power = plot_df |>
   plot_ly(x = ~mu, y = ~prop, type = 'scatter', mode = "line") |>
   layout(title = 'Association between effect size and power', plot_bgcolor = "#e5ecf6",
          xaxis = list(title = "Effect Size",
-                     tickvals = seq(1, 6, by = 1),
-                     ticktext = seq(1, 6, by = 1)),
+                     tickvals = seq(0, 6, by = 1),
+                     ticktext = seq(0, 6, by = 1)),
          yaxis = list(title = "Power")) 
 power
 ```
-* the power increases as the effect size increases. For a study with a sample size of 30, an effect size=5 has been larger enough to bring the power of t test up to 1.
+* For true μ=0, the value on y-axis represents the probability of false positive(Type I error); For true μ=1:6,the value on y-axis represents power, the power increases as the effect size increases. For a study with a sample size of 30, an effect size=3 can bring the power up to more than 80%, an effect size=6 has been larger enough to bring the power of t test up to 1.
 
 
 
@@ -217,12 +218,15 @@ estimate_all = sim_results_df |>
   plot_ly(x = ~mu, y = ~avg_estimate, type = 'scatter', mode = 'line', name = 'all') |>
   layout(title = 'Association between true mu and its estimate', plot_bgcolor = "#e5ecf6",
          xaxis = list(title = "True mu",
-                     tickvals = seq(1, 6, by = 1),
-                     ticktext = seq(1, 6, by = 1)),
+                     tickvals = seq(0, 6, by = 1),
+                     ticktext = seq(0, 6, by = 1)),
          yaxis = list(title = "Estimate")) 
 estimate_all
 
 ```
+* For a large sample size(n=5000),the average estimate of μ^ can accurately represent the true value.
+
+
 
 Make a second plot (or overlay on the first) the average estimate of μ^ only in samples for which the null was rejected on the y axis and the true value of μ on the x axis. Is the sample average of μ^ across tests for which the null is rejected approximately equal to the true value of μ? Why or why not?
 
@@ -240,3 +244,5 @@ compare
   
 ```
 
+For true mu=0, the sample average of μ^ across tests for which the null(μ=0) is rejected  is produced by false positive data(meaningless);
+For true μ=1:6, as the effect size increases, the power increases, the tests for which the null(μ=0) is rejected increases, the sample average of μ^ becomes more close  to the true value of μ. (I stated the reasons within this sentence)
