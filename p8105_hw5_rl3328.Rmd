@@ -2,7 +2,8 @@
 title: "p8105_hw5_rl3328"
 author: "Ruixi Li"
 date: "2023-11-03"
-output: github_document
+output: html_document
+
 ---
 
 ```{r setup, message=FALSE}
@@ -10,6 +11,7 @@ library(tidyverse)
 library(readr)
 library(purrr)
 library(plotly)
+library(forcats)
 ```
 
 # Problem 1
@@ -19,7 +21,7 @@ library(plotly)
 * I created the variable `city_state`.
 
 ```{r, message=FALSE}
-homicide = read_csv("homicide-data.csv") |>
+homicide = read_csv("data/Problem1/homicide-data.csv") |>
   janitor::clean_names() |>
   dplyr::mutate(
     city_state = paste(city,",",state),
@@ -28,7 +30,7 @@ homicide = read_csv("homicide-data.csv") |>
 ```
 
 
-the raw data have `r nrow(homicide)` records and`r ncol(homicide)` variables. Column names are `r colnames(homicide)`.The data included the location of the killing, whether an arrest was made and, in most cases, basic demographic information about each victim.
+the raw data have `r nrow(homicide)` records and`r ncol(homicide)` variables. Column names are `r colnames(homicide)` that include the victim name, race, age, and sex; the date the homicide was reported; and the location of the homicide. In cleaning, I created a `city_state` variable that includes both city and state, and a `resolution` variable to indicate whether the case was closed by arrest. I also corrected one entry that has a misclassification of state from “Tulsa, AL” to "Tulsa, OK".
 
 ## summerize and get the proportion
 
@@ -68,14 +70,17 @@ data_city = homicide |>
   summarise(total_count = n(),
             unsolved_count = sum(disposition %in% c("Closed without arrest","Open/No arrest"))) 
 
-result <- data_city |>
+result =
+  data_city |>
   group_by(city_state) |>
   nest() |>
   mutate(proportion_test = map(data, prop)) |>
-  select(proportion_test) |>
-  unnest(proportion_test)
+  select(city_state, proportion_test) |>
+  unnest(proportion_test) |>
+  mutate(city_state = as.factor(city_state),
+         city_state = fct_reorder(city_state,desc(estimate)))
 
-#do I need to combine the two locations in Tulsa
+
 ```
 
 ## visualization
@@ -84,9 +89,11 @@ Create a plot that shows the estimates and CIs for each city – check out geom_
 
 ```{r}
 result |>
-  mutate(city_state = fct_reorder(city_state,estimate)) |>
-  ggplot(aes(x = city_state, y = estimate, color = city_state)) +
-  geom_pointrange(aes(ymin = conf.low, ymax = conf.high))
+  mutate(city_state = fct_reorder(city_state, desc(estimate))) |>
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_pointrange(aes(ymin = conf.low, ymax = conf.high)) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
 ```
 
 # Problem 2
@@ -117,12 +124,13 @@ longitudinal = function(path,filename) {
   
 }
 
-filelst = list.files("./data",full.names = TRUE)
+filelst = list.files("./data/Problem2",full.names = TRUE)
 
 q3_tidy = 
   purrr::map(filelst, ~ longitudinal(.x,basename(.x))) |> 
   bind_rows()
 
+#some checks
 q3_tidy |>
   group_by(week) |> 
   summarise(n = n())
@@ -143,8 +151,8 @@ Make a spaghetti plot showing observations on each subject over time, and commen
 ```{r}
 q3_tidy |>
   ggplot(aes(x = week, y = value, color = subject_id)) +
-  geom_line(aes(group = subject_id),se = FALSE)+
-  facet_grid(~arm)
+  geom_smooth(aes(group = subject_id),se = FALSE)+
+  facet_grid(.~arm)
 ```
 
 Participants in control arm didn't show significant change in value over the 8 weeks of study, whereas participants in experimental arm saw a considerable increase in value over the 8 weeks.
@@ -244,5 +252,8 @@ compare
   
 ```
 
-For true mu=0, the sample average of μ^ across tests for which the null(μ=0) is rejected  is produced by false positive data(meaningless);
-For true μ=1:6, as the effect size increases, the power increases, the tests for which the null(μ=0) is rejected increases, the sample average of μ^ becomes more close  to the true value of μ. (I stated the reasons within this sentence)
+* For true mu=0, the sample average of μ^ across tests for which the null(μ=0) is rejected  is produced by false positive data(not of our focus);
+
+* For true μ=1:6, the estimated μ^ solely based on the significant result may appear larger than it actually is, especially if the effect size is small. As the effect size increases,the sample average of μ^ becomes more close  to the true value of μ.If researchers only focus on statistically significant results, smaller effect sizes may still be statistically significant, given a sufficiently large sample size.
+
+* Reasons: In the presence of sampling variability, extreme values (far from the null hypothesis) are more likely to produce statistically significant results. When effect size is small,the number of tests for which the null(μ=0) is rejected is relatively small, the sample average of μ^ is more likely to be subject to the upward bias. However, as effect size increases, power increases,  the number of tests for which the null(μ=0) is rejected increases, higher power increases the chances of detecting a true effect.
